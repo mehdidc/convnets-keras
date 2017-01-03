@@ -1,4 +1,3 @@
-import numpy as np
 from keras.layers.core import  Lambda, Merge
 from keras.layers.convolutional import Convolution2D
 from keras import backend as K
@@ -25,12 +24,20 @@ def crosschannelnormalization(alpha = 1e-4, k=2, beta=0.75, n=5,**kwargs):
 
     return Lambda(f, output_shape=lambda input_shape:input_shape,**kwargs)
 
+class SplitTensor(Layer):
 
+    def __init__(self, axis=1, ratio_split=1, id_split=0, **kwargs):
+        super(SplitTensor, self).__init__(**kwargs)
+        self.axis = axis
+        self.ratio_split = ratio_split
+        self.id_split = id_split
 
-def splittensor(axis=1, ratio_split=1, id_split=0,**kwargs):
-    def f(X):
+    def call(self, X, mask=None):
+        axis = self.axis
+        ratio_split = self.ratio_split
+        id_split = self.id_split
+
         div = X.shape[axis] // ratio_split
-
         if axis == 0:
             output =  X[id_split*div:(id_split+1)*div,:,:,:]
         elif axis == 1:
@@ -44,15 +51,17 @@ def splittensor(axis=1, ratio_split=1, id_split=0,**kwargs):
 
         return output
 
-    def g(input_shape):
-        output_shape=list(input_shape)
-        output_shape[axis] = output_shape[axis] // ratio_split
+    def get_output_shape_for(self, input_shape):
+        output_shape = list(input_shape)
+        output_shape[self.axis] = output_shape[self.axis] // self.ratio_split
         return tuple(output_shape)
 
-    return Lambda(f,output_shape=lambda input_shape:g(input_shape),**kwargs)
+    def get_config(self):
+        config = {'axis': self.axis, 'ratio_split': self.ratio_split, 'id_split': self.id_split}
+        base_config = super(SplitTensor, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
 
-
-
+splittensor = SplitTensor
 
 def convolution2Dgroup(n_group, nb_filter, nb_row, nb_col, **kwargs):
     def f(input):
@@ -82,3 +91,8 @@ class Softmax4D(Layer):
 
     def get_output_shape_for(self, input_shape):
         return input_shape
+
+custom_objects = {
+    'SplitTensor': SplitTensor,
+    'Softmax4D': Softmax4D,
+}

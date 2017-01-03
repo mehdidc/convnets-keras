@@ -337,3 +337,5 @@ if __name__ == "__main__":
 
     out = model.predict(im)
     heatmap = out[0,ids,:,:].sum(axis=0)
+
+    model.save('model.h5')
